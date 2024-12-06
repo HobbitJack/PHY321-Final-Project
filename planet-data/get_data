@@ -1,0 +1,7 @@
+for FILE in $(ls ./*.txt)
+do
+    FILE="${FILE%.txt}"
+    csplit -s "${FILE}.txt" /SOE/+1;csplit -s xx01 /EOE/;mv xx00 $FILE.data;rm xx01;tail -n2 "${FILE}.data" | sponge "${FILE}.data"; cat "${FILE}.data" | tr -s "= " "  " | cut -d" " -f3,5,7 | tr " " "\t" | transpose > "${FILE}.tsv"
+    echo -e "$(wstrip ${FILE}.txt | grep '^Mass' | tr -d ' ' | tr 'DFV=+-' '\t'| cut -f2)\t$(wstrip ${FILE}.txt | grep '^Vol\.' | tr -d ' ' | tr 'V=+-' '\t'| cut -f3)" >> "${FILE}.tsv"
+done
+

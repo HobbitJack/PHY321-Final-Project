@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+tc() { set ${*,,} ; echo ${*^} ; }
+
+echo "# Units in km, km/s" # and kg
+echo "PLANET_DATA_TABLE = {"
+for FILE in $(ls *.tsv | sort)
+do
+    echo "'$(tc ${FILE%.tsv})': {"
+    # echo "'mass': $(cut -f1 $FILE | head -n4 | tail -n1),"
+    echo "'radius': $(cut -f2 $FILE | head -n4 | tail -n1),"
+    echo "'x': $(cut -f1 $FILE | head -n1 | tail -n1),"
+    echo "'y': $(cut -f1 $FILE | head -n2 | tail -n1),"
+    echo "'z': $(cut -f1 $FILE | head -n3 | tail -n1),"
+    echo "'vx': $(cut -f2 $FILE | head -n1 | tail -n1),"
+    echo "'vy': $(cut -f2 $FILE | head -n2 | tail -n1),"
+    echo "'vz': $(cut -f2 $FILE | head -n3 | tail -n1),"
+    echo "},"
+done
+echo "}"
+
