@@ -1,4 +1,4 @@
-from typing import Self
+import sys
 import planetdata
 import constants
 import kinematicobject
