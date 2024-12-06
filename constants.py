@@ -8,6 +8,7 @@ class Constants:
         self.gravitational_constant = GRAVITATIONAL_CONSTANT
         self.delta_time = SECONDS_IN_DAY
         self.total_timesteps = ONE_YEAR
+        self.quiet = False
         self.update_values()
 
     def update_values(self):
