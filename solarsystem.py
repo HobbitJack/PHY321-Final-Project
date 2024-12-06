@@ -236,39 +236,40 @@ if __name__ == "__main__":
             print("Default behavior will print positions to STDOUT")
             print()
             print("System options:")
-            print("  -B, --small-bodies=M           Generate M small bodies")
-            print("  -s, --solar-system             Use full solar system")
-            print("  -S, --select-bodies=BODIES     Use only bodies BODIES")
+            print("  -B, --small-bodies=M             Generate M small bodies")
+            print("  -s, --solar-system               Use full solar system")
+            print("  -S, --select-bodies=BODIES       Use only bodies BODIES")
             print()
             print("Simulation options:")
-            print()
             print(
-                "  -2, --2-dimensions             Ignore Z direction, simulating in 2D"
+                "  -2, --2-dimensions               Ignore Z direction, simulating in 2D"
             )
-            print("  -d, --delta-time=DELTATIME     Use DELTATIME as timestep")
+            print("  -d, --delta-time=DELTATIME       Use DELTATIME as timestep")
             print(
                 "  -G, --gravitational-constant=G   Use G in km^3/(kg*s^2) for the Universal Gravitational Constant"
             )
-            print("  -t, --timesteps=TIMESTEPS      Use TIMESTEPS timesteps")
+            print("  -t, --timesteps=TIMESTEPS        Use TIMESTEPS timesteps")
             print()
             print("Output options:")
             print(
-                "  -f, --output-file=FILE         Output plot to FILE instead of displaying"
+                "  -f, --output-file=FILE           Output plot to FILE instead of displaying"
             )
-            print("  -l, --no-legend                Do not display legend")
-            print("  -p, --plot                     Generate plot instead")
+            print("  -l, --no-legend                  Do not display legend")
+            print("  -p, --plot                       Generate plot instead")
             print(
-                "  -P, --print-and-plot           Print data to STDOUT and generate plot"
+                "  -P, --print-and-plot             Print data to STDOUT and generate plot"
             )
-            print("  -q, --quiet                    Disable progress output")
+            print("  -q, --quiet                      Disable progress output")
             print()
             print("Getting help:")
-            print("  -h, --help                     Print this help and exit")
-            print("  -v, --version                  Print version information and exit")
+            print("  -h, --help                       Print this help and exit")
+            print(
+                "  -v, --version                    Print version information and exit"
+            )
             print("For full documentation, try 'man solarsystem'.")
             sys.exit(0)
         elif option == "-v" or option == "--version":
-            print("solarsystem v1.0.0")
+            print("solarsystem v1.0.1")
             print("Copyright C Gabe Almeida, Andy [], and Jack Uteg 2024")
             print("Do not redistribute without written permission.")
             sys.exit(0)
