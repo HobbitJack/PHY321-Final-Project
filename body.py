@@ -21,6 +21,7 @@ class Body:
         self.kinematic = kinematicobject.KinematicObject(
             mass, position_initial, velocity_initial, constant
         )
+        self.destroyed = False
 
     @staticmethod
     def from_table(

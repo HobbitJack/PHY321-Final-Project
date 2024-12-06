@@ -17,11 +17,14 @@ class KinematicObject:
         self.velocity: vector.Vector = vector.Vector(*velocity_initial)
         self.net_force = [0, 0, 0]
         self.constants: constants.Constants = constant
+        self.destroyed = False
 
     def distance(self, other: Self) -> float:
         return (self.position[-1] - other.position[-1]).norm()
 
     def compute_net_force(self, massive_body_kinematics: list[Self]) -> vector.Vector:
+        if self.destroyed:
+            return False
         net_force = vector.Vector(0, 0, 0)
         for massive_body in massive_body_kinematics:
             if massive_body is self:
@@ -35,6 +38,8 @@ class KinematicObject:
         return net_force
 
     def update_position(self) -> None:
+        if self.destroyed:
+            return
         self.position.append(
             self.position[-1]
             + self.velocity * self.constants.delta_time
@@ -42,6 +47,8 @@ class KinematicObject:
         )
 
     def update_velocity(self, massive_body_kinematics: list[Self]) -> None:
+        if self.destroyed:
+            return
         self.velocity = self.velocity + (
             (
                 (
