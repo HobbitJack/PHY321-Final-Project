@@ -97,7 +97,7 @@ if __name__ == "__main__":
             TWO_DIMENSIONS = True
         elif option == "-B" or option == "--small-bodies":
             try:
-                SMALL_BODIES = int(argument)
+                NUM_BODIES = int(argument)
             except ValueError:
                 print(f"solarsystem: {argument}: Invalid body selection")
                 sys.exit(1)

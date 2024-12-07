@@ -57,7 +57,7 @@ class SolarSystem:
         "Neptune",
     ]
 
-    @classmethod
+    @staticmethod
     def object_distance(object1: body.Body, object2: body.Body) -> float:
         return (
             object1.kinematic.position[-1] - object2.kinematic.position[-1]
@@ -66,7 +66,7 @@ class SolarSystem:
     def generate_solar_system(
         self,
         planet_system: list["str"],
-        generate_small_objects: bool,
+        generate_small_objects: bool | int,
         two_dimensions: bool = False,
     ) -> None:
         for massive_object in planet_system:
@@ -76,11 +76,18 @@ class SolarSystem:
             self.massive_bodies.append(new_object)
             self.all_objects.append(new_object)
 
+        for obj_num in range(generate_small_objects):
+            self.all_objects.append(
+                body.Body.generate_small_body(
+                    f"Obj {obj_num}", self.constants, two_dimensions
+                )
+            )
+
     def __init__(
         self,
         constant: constants.Constants,
         planet_system: list[str],
-        small_objects: bool,
+        small_objects: bool | int,
         two_dimensional: bool = False,
     ) -> None:
         self.constants = constant
@@ -89,13 +96,15 @@ class SolarSystem:
         self.massive_bodies: list[body.Body] = []
         self.all_objects: list[body.Body] = []
 
+        print(small_objects)
+
         self.generate_solar_system(planet_system, small_objects, two_dimensional)
 
-    def check_collision(self, body) -> bool:
+    def check_collision(self, current_body) -> bool:
         for massive_body in self.massive_bodies:
-            if massive_body is body.kinematic:
+            if current_body is massive_body:
                 continue
-            if self.object_distance(body, massive_body) <= 0:
+            if SolarSystem.object_distance(current_body, massive_body) <= 0:
                 return True
         return False
 
@@ -116,6 +125,11 @@ class SolarSystem:
                 [massive_body.kinematic for massive_body in self.massive_bodies]
             )
 
+    def collide_bodies(self):
+        for current_body in self.all_objects:
+            if self.check_collision(current_body):
+                current_body.kinematic.destroyed = True
+
     def update_state(self):
         self.current_timestep += 1
         self.current_time += self.constants.delta_time
@@ -125,6 +139,7 @@ class SolarSystem:
             if not self.constants.quiet:
                 self.print_progress()
             self.update_bodies()
+            self.collide_bodies()
             self.update_state()
 
     def print_progress(self):
@@ -138,8 +153,16 @@ class SolarSystem:
             "\t".join(
                 ["TIME"]
                 + [
-                    "\t".join(["X", "Y"] if two_dimensions else ["X", "Y", "Z"])
-                    for body in self.all_objects
+                    "\t".join(
+                        [f"{current_body.name} X", f"{current_body.name} Y"]
+                        if two_dimensions
+                        else [
+                            f"{current_body.name} X",
+                            f"{current_body.name} Y",
+                            f"{current_body.name} Z",
+                        ]
+                    )
+                    for current_body in self.all_objects
                 ]
             )
         )
@@ -150,7 +173,11 @@ class SolarSystem:
                 "\t".join(
                     [str(time)]
                     + [
-                        str(coord)
+                        (
+                            str(coord)
+                            if index < len(current_body.kinematic.position)
+                            else ""
+                        )
                         for current_body in self.all_objects
                         for coord in current_body.kinematic.position[index]
                     ]
@@ -168,8 +195,12 @@ class SolarSystem:
             )
 
         for index, current_body in enumerate(self.all_objects):
-            position_x = [position[0] for position in current_body.kinematic.position]
-            position_y = [position[1] for position in current_body.kinematic.position]
+            position_x = [
+                position[0] for position in current_body.kinematic.position[-499:-1]
+            ]
+            position_y = [
+                position[1] for position in current_body.kinematic.position[-499:-1]
+            ]
             if two_dimensions:
                 matplotlib.pyplot.plot(
                     position_x,
@@ -178,7 +209,7 @@ class SolarSystem:
                 )
             else:
                 position_z = [
-                    position[2] for position in current_body.kinematic.position
+                    position[2] for position in current_body.kinematic.position[-499:-1]
                 ]
                 matplotlib.pyplot.plot(
                     position_x,
