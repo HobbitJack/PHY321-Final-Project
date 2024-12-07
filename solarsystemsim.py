@@ -10,17 +10,18 @@ import solarsystem
 
 
 TWO_DIMENSIONS = False
-PRINT_SYSTEM = True
+PRINT_SYSTEM = False
 PLOT_SYSTEM = False
 DISPLAY_LEGEND = True
 FILENAME = False
 NUM_BODIES = False
+ONLY_TROJANS = False
 SOLAR_SYSTEM = ["Sun", "Jupiter"]
 
 if __name__ == "__main__":
     constant = constants.Constants()
 
-    short_options = "2B:d:f:G:lpPqsS:t:hv"
+    short_options = "2B:d:f:G:lpPqsS:t:Thv"
     long_options = [
         "2-dimensions",
         "small-bodies=",
@@ -28,11 +29,13 @@ if __name__ == "__main__":
         "output-file=",
         "gravitational_constant=",
         "no-legend",
+        "print",
         "plot",
-        "print-and-plot",
         "quiet",
         "solar-system",
         "select-bodies=",
+        "timesteps=",
+        "only-trojans",
         "help",
         "version",
     ]
@@ -75,11 +78,12 @@ if __name__ == "__main__":
                 "  -f, --output-file=FILE           Output plot to FILE instead of displaying"
             )
             print("  -l, --no-legend                  Do not display legend")
-            print("  -p, --plot                       Generate plot instead")
-            print(
-                "  -P, --print-and-plot             Print data to STDOUT and generate plot"
-            )
+            print("  -p, --print                      Print columnated position data")
+            print("  -P, --plot                       Generate plot with matplotlib")
             print("  -q, --quiet                      Disable progress output")
+            print(
+                "  -t, --only-trojans               Only output for objects identified as trojans"
+            )
             print()
             print("Getting help:")
             print("  -h, --help                       Print this help and exit")
@@ -118,10 +122,8 @@ if __name__ == "__main__":
         elif option == "-l" or option == "--no-legend":
             DISPLAY_LEGEND = False
         elif option == "-p" or option == "--plot":
-            PRINT_SYSTEM = False
-            PLOT_SYSTEM = True
-        elif option == "-P" or option == "--print-and-plot":
             PRINT_SYSTEM = True
+        elif option == "-P" or option == "--print-and-plot":
             PLOT_SYSTEM = True
         elif option == "-q" or option == "--quiet":
             constant.quiet = True
@@ -138,18 +140,29 @@ if __name__ == "__main__":
             except ValueError:
                 print(f"solarsystem: {argument}: Invalid timesteps selection")
                 sys.exit(1)
+        elif option == "-T" or option == "--only-trojans":
+            ONLY_TROJANS = True
 
     constant.update_values()
     system = solarsystem.SolarSystem(constant, SOLAR_SYSTEM, NUM_BODIES, TWO_DIMENSIONS)
 
     system.run_system_to_end()
+    body_types = system.compute_body_types()
+
+    for current_body in body_types[3]:
+        if current_body[1] != 0:
+            print(
+                f"{system.all_objects[current_body]} orbits {system.massive_bodies[current_body[1]].name}"
+            )
 
     if PRINT_SYSTEM:
-        system.print_header()
-        system.print_system()
+        system.print_header(len(body_types[1]) if ONLY_TROJANS else False)
+        system.print_system(body_types[1] if ONLY_TROJANS else False)
 
     if PLOT_SYSTEM:
-        system.generate_system_plot(TWO_DIMENSIONS)
+        system.generate_system_plot(
+            TWO_DIMENSIONS, body_types[1] if ONLY_TROJANS else False
+        )
 
         if DISPLAY_LEGEND:
             matplotlib.pyplot.legend()

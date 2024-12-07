@@ -9,6 +9,7 @@ import body
 import constants
 
 
+# Procedure
 def set_axes_equal(ax):
     """
     Make axes of 3D plot have equal scale so that spheres appear as spheres,
@@ -57,12 +58,14 @@ class SolarSystem:
         "Neptune",
     ]
 
+    # Function
     @staticmethod
     def object_distance(object1: body.Body, object2: body.Body) -> float:
         return (
             object1.kinematic.position[-1] - object2.kinematic.position[-1]
         ).norm() - (object1.radius + object2.radius)
 
+    # Procedure
     def generate_solar_system(
         self,
         planet_system: list["str"],
@@ -83,6 +86,7 @@ class SolarSystem:
                 )
             )
 
+    # Procedure
     def __init__(
         self,
         constant: constants.Constants,
@@ -96,10 +100,9 @@ class SolarSystem:
         self.massive_bodies: list[body.Body] = []
         self.all_objects: list[body.Body] = []
 
-        print(small_objects)
-
         self.generate_solar_system(planet_system, small_objects, two_dimensional)
 
+    # Function
     def check_collision(self, current_body) -> bool:
         for massive_body in self.massive_bodies:
             if current_body is massive_body:
@@ -108,6 +111,7 @@ class SolarSystem:
                 return True
         return False
 
+    # Procedure
     def update_bodies(self):
         # Calculate initial net force
         for current_body in self.all_objects:
@@ -118,6 +122,9 @@ class SolarSystem:
         # Update position
         for current_body in self.all_objects:
             current_body.kinematic.update_position()
+            current_body.kinematic.position = current_body.kinematic.position[
+                -max(499, len(current_body.kinematic.position)) :
+            ]
 
         # Calculate new velocities
         for current_body in self.all_objects:
@@ -125,16 +132,20 @@ class SolarSystem:
                 [massive_body.kinematic for massive_body in self.massive_bodies]
             )
 
+    # Procedure
     def collide_bodies(self):
-        for current_body in self.all_objects:
+        for index, current_body in enumerate(self.all_objects):
             if self.check_collision(current_body):
+                print(f"Body {index} collides!")
                 current_body.kinematic.destroyed = True
 
+    # Procedure
     def update_state(self):
         self.current_timestep += 1
         self.current_time += self.constants.delta_time
 
-    def run_system_to_end(self):
+    # Procedure
+    def run_system_to_end(self) -> None:
         while self.current_time <= self.constants.final_time:
             if not self.constants.quiet:
                 self.print_progress()
@@ -142,13 +153,17 @@ class SolarSystem:
             self.collide_bodies()
             self.update_state()
 
-    def print_progress(self):
+    # Procedure
+    def print_progress(self) -> None:
         print(
             f"{self.current_timestep / self.constants.total_timesteps * 100:.2f}% computing...",
             file=sys.stderr,
         )
 
-    def print_header(self, two_dimensions: bool = False):
+    # Procedure
+    def print_header(
+        self, two_dimensions: bool, only_trojans: bool | list[int]
+    ) -> None:
         print(
             "\t".join(
                 ["TIME"]
@@ -162,12 +177,14 @@ class SolarSystem:
                             f"{current_body.name} Z",
                         ]
                     )
-                    for current_body in self.all_objects
+                    for index, current_body in enumerate(self.all_objects)
+                    if not only_trojans or index in only_trojans
                 ]
             )
         )
 
-    def print_system(self):
+    # Procedure
+    def print_system(self, only_trojans: bool | list[int]) -> None:
         for index, time in enumerate(self.constants.time_list):
             print(
                 "\t".join(
@@ -178,16 +195,21 @@ class SolarSystem:
                             if index < len(current_body.kinematic.position)
                             else ""
                         )
-                        for current_body in self.all_objects
+                        for index, current_body in enumerate(self.all_objects)
+                        if not only_trojans or index in only_trojans
                         for coord in current_body.kinematic.position[index]
                     ]
                 )
             )
 
-    def generate_system_plot(self, two_dimensions: bool):
+    # Procedure
+    def generate_system_plot(
+        self, two_dimensions: bool, only_trojans: bool | list[int] = False
+    ) -> None:
         if two_dimensions:
             matplotlib.pyplot.figure(figsize=(15, 15))
-            matplotlib.pyplot.axes().set_aspect("equal")
+            axes = matplotlib.pyplot.gca()
+            axes.set_aspect("equal")
 
         else:
             axes = matplotlib.pyplot.figure(figsize=(15, 15)).add_subplot(
@@ -195,21 +217,29 @@ class SolarSystem:
             )
 
         for index, current_body in enumerate(self.all_objects):
-            position_x = [
-                position[0] for position in current_body.kinematic.position[-499:-1]
-            ]
-            position_y = [
-                position[1] for position in current_body.kinematic.position[-499:-1]
-            ]
+            if only_trojans:
+                if (
+                    index not in only_trojans
+                    and current_body not in self.massive_bodies
+                ):
+                    continue
+            position_x = [position[0] for position in current_body.kinematic.position]
+            position_y = [position[1] for position in current_body.kinematic.position]
+            current_color = axes._get_lines.get_next_color()
             if two_dimensions:
                 matplotlib.pyplot.plot(
                     position_x,
                     position_y,
                     label=f"{current_body.name}",
+                    color=current_color,
                 )
+                if current_body in self.massive_bodies:
+                    matplotlib.pyplot.plot(
+                        position_x[-1], position_y[-1], "o", color=current_color
+                    )
             else:
                 position_z = [
-                    position[2] for position in current_body.kinematic.position[-499:-1]
+                    position[2] for position in current_body.kinematic.position
                 ]
                 matplotlib.pyplot.plot(
                     position_x,
@@ -225,3 +255,26 @@ class SolarSystem:
             axes.set_box_aspect([1.0, 1.0, 1.0])
             axes.set_zlabel("Z Position (km)")
             set_axes_equal(axes)
+
+    # Function
+    def compute_body_types(
+        self,
+    ) -> tuple[list[int], list[int], list[int], list[tuple[int, int]]]:
+        degenerate: list[int] = []
+        trojans: list[int] = []
+        ejected: list[int] = []
+        orbitting: list[tuple[int, int]] = []
+
+        for index, current_body in enumerate(self.all_objects):
+            focus_object = current_body.kinematic.get_focus_massive_body(
+                [massive_body.kinematic for massive_body in self.massive_bodies]
+            )
+            if focus_object == -1:
+                trojans.append(index)
+            elif focus_object is None:
+                degenerate.append(index)
+            elif focus_object is False:
+                ejected.append(index)
+            else:
+                orbitting.append((index, focus_object))
+        return (degenerate, trojans, ejected, orbitting)
