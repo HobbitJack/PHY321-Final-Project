@@ -7,6 +7,7 @@ import vector
 
 
 class KinematicObject:
+    # Procedure
     def __init__(
         self,
         mass: float,
@@ -21,9 +22,11 @@ class KinematicObject:
         self.constants: constants.Constants = constant
         self.destroyed = False
 
+    # Function
     def distance(self, other: Self) -> float:
         return (self.position[-1] - other.position[-1]).norm()
 
+    # Function
     def compute_net_force(self, massive_body_kinematics: list[Self]) -> vector.Vector:
         if self.destroyed:
             return False
@@ -39,6 +42,7 @@ class KinematicObject:
             )
         return net_force
 
+    # Procedure
     def update_position(self) -> None:
         if self.destroyed:
             return
@@ -48,6 +52,7 @@ class KinematicObject:
             + (self.net_force / self.mass) * self.constants.delta_time**2 / 2
         )
 
+    # Procedure
     def update_velocity(self, massive_body_kinematics: list[Self]) -> None:
         if self.destroyed:
             return
@@ -64,26 +69,41 @@ class KinematicObject:
             )
         )
 
+    # Function
+    def get_orbit(self) -> tuple[float, float, float, float, float, float]:
+        if not self.destroyed:
+            return get_conic_section(
+                [self.position[index] for index in range(-50, 1, 10)]
+            )  # Use last 30 days
+        return "Degenerate"
+
+    def get_orbit_standard_form(
+        self,
+    ) -> tuple[float, float, float, float] | str:
+        orbit_conic = self.get_orbit()
+        if orbit_conic == "Degenerate":
+            return orbit_conic
+        orbit_type = classify_conic(*orbit_conic)
+        if orbit_type != "Ellipse" and orbit_type != "Circle":
+            return orbit_type
+
+        return get_standard_form(*orbit_conic)
+
+    # Function
     def get_focus_massive_body(self, massive_body_kinematics: list[Self]) -> int:
         # Returns index of focus massive body
         # None if degenerate, False if not ellipse, and -1 if no body at focus
 
-        orbit_conic = get_conic_section(
-            [self.position[index] for index in range(-50, 1, 10)]
-        )  # Use last 30 days
-        conic_type = classify_conic(*orbit_conic)
+        orbit = self.get_orbit_standard_form()
 
-        if conic_type == "Degenerate":
-            return None
-        if conic_type != "Circle" and conic_type != "Ellipse":
-            return False
+        if isinstance(orbit, str):
+            return orbit
 
-        ellipse_standard_form = get_standard_form(*orbit_conic)
-        ellipse_foci = get_ellipse_foci(ellipse_standard_form)
+        ellipse_foci = get_ellipse_foci(orbit)
 
         foci_distances = []
         for massive_body in massive_body_kinematics:
-            if get_inside_ellipse(massive_body.position[-1], ellipse_standard_form):
+            if get_inside_ellipse(massive_body.position[-1], orbit):
                 foci_distances.append(
                     (
                         (ellipse_foci[0] - massive_body.position[-1]).norm(),
@@ -105,7 +125,30 @@ class KinematicObject:
                 min_index = index
         return min_index
 
+    # Function
+    def get_orbital_period(self, massive_body: Self) -> float:
+        orbit = self.get_orbit_standard_form()
 
+        if isinstance(orbit, str):
+            return orbit
+
+        return numpy.sqrt(
+            numpy.sqrt(numpy.abs(orbit[0])) ** 3
+            * 4
+            * numpy.pi**2
+            / (self.constants.gravitational_constant * (massive_body.mass + self.mass))
+        )
+
+    # Function
+    def get_orbital_resonance(self, massive_body: Self, parent_body: Self) -> float:
+        self_period = self.get_orbital_period(parent_body)
+        other_period = massive_body.get_orbital_period(parent_body)
+        if not isinstance(self_period, float) or not isinstance(other_period, float):
+            return self_period
+        return self_period / other_period
+
+
+# Function
 def get_conic_section(
     points: list[vector.Vector], f=1e20
 ) -> tuple[float, float, float, float, float, float]:
@@ -145,6 +188,7 @@ def get_conic_section(
     return (a, b, c, d, e, f)
 
 
+# Function
 def classify_conic(a, b, c, d, e, f) -> str:
     if numpy.isclose((a * c - b**2 / 4) * f + (b * e * d - c * d**2 - a * e**2) / 4, 0):
         return "Degenerate"
@@ -159,6 +203,7 @@ def classify_conic(a, b, c, d, e, f) -> str:
     return "Hyperbola"
 
 
+# Function
 def get_standard_form(a, b, c, d, e, f) -> tuple[float, float, float, float]:
     # Returns the canonical form u^2/a^2 + v^2/b^2 = 1
     # for u = cos*x-sin*y; v = sin*y+cos*x
@@ -185,6 +230,7 @@ def get_standard_form(a, b, c, d, e, f) -> tuple[float, float, float, float]:
     ]
 
 
+# Function
 def get_inside_ellipse(
     point: vector.Vector, parameters: tuple[float, float, float, float]
 ) -> bool:
@@ -195,10 +241,13 @@ def get_inside_ellipse(
     return u**2 / a_sq + v**2 / b_sq < 1
 
 
+# Function
 def get_ellipse_foci(
     parameters: tuple[float, float, float, float]
 ) -> tuple[vector.Vector, vector.Vector]:
     a_sq, b_sq, sin, cos = parameters
+    if numpy.isclose(a_sq, b_sq):
+        return vector.Vector(0, 0)
     u = numpy.sqrt(a_sq - b_sq)
 
     return (

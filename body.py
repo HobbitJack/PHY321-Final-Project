@@ -57,13 +57,34 @@ class Body:
 
     @staticmethod
     def generate_small_body(
-        object_name: str, constant: constants.Constants, two_dimension: bool = False
+        object_name: str,
+        constant: constants.Constants,
+        two_dimension: bool = False,
+        generate_rings: tuple[int, int] = (-1, -1),  # Current, Total
     ) -> Self:
 
-        position = [
-            ((random.random() * 9e8) + 1e8) * math.copysign(1, random.random() - 0.5)
-            for _ in range(0, 2 + int(not two_dimension))
-        ]
+        if generate_rings[0] == -1:
+            position = [
+                ((random.random() * 1e9) + 1e7)
+                * math.copysign(1, random.random() - 0.5)
+                for _ in range(0, 2 + int(not two_dimension))
+            ]
+        else:
+            radius = (
+                constant.ring_center
+                - (constant.ring_spacing * (constant.num_ring - 1) / 2)
+                + (generate_rings[0] % constant.num_ring) * constant.ring_spacing
+            )
+            per_ring = generate_rings[1] / constant.num_ring
+            angle = (2 * math.pi / per_ring) * (
+                generate_rings[0]
+                - (generate_rings[0] % constant.num_ring) / constant.num_ring
+            )
+            position = [radius * math.cos(angle), radius * math.sin(angle)] + [
+                ((random.random() * 9e5) + 1e5)
+                * math.copysign(1, random.random() - 0.5)
+                for _ in range(0, not two_dimension)
+            ]
 
         position_vector = vector.Vector(*position)
         distance = position_vector.norm()

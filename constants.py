@@ -3,6 +3,8 @@ SECONDS_IN_DAY = 86400
 ONE_YEAR = 365
 HALE_BOPP_MASS = 1e16
 HALE_BOPP_RADIUS = 50
+JUPITER_SMA = 7.78479e8
+ASTEROID_BELT_SMA = 4.9053e8
 
 
 class Constants:
@@ -13,6 +15,9 @@ class Constants:
         self.quiet = False
         self.small_body_mass = HALE_BOPP_MASS
         self.small_body_radius = HALE_BOPP_RADIUS
+        self.num_ring = 6
+        self.ring_center = JUPITER_SMA
+        self.ring_spacing = 5e7
         self.update_values()
 
     def update_values(self):

@@ -71,6 +71,7 @@ class SolarSystem:
         planet_system: list["str"],
         generate_small_objects: bool | int,
         two_dimensions: bool = False,
+        generate_rings: bool = False,
     ) -> None:
         for massive_object in planet_system:
             new_object = body.Body.from_table(
@@ -82,7 +83,10 @@ class SolarSystem:
         for obj_num in range(generate_small_objects):
             self.all_objects.append(
                 body.Body.generate_small_body(
-                    f"Obj {obj_num}", self.constants, two_dimensions
+                    f"Obj_{obj_num}",
+                    self.constants,
+                    two_dimensions,
+                    (obj_num if generate_rings else -1, generate_small_objects),
                 )
             )
 
@@ -93,6 +97,7 @@ class SolarSystem:
         planet_system: list[str],
         small_objects: bool | int,
         two_dimensional: bool = False,
+        generate_rings: bool = False,
     ) -> None:
         self.constants = constant
         self.current_time: int = 0  # Seconds
@@ -100,7 +105,9 @@ class SolarSystem:
         self.massive_bodies: list[body.Body] = []
         self.all_objects: list[body.Body] = []
 
-        self.generate_solar_system(planet_system, small_objects, two_dimensional)
+        self.generate_solar_system(
+            planet_system, small_objects, two_dimensional, generate_rings
+        )
 
     # Function
     def check_collision(self, current_body) -> bool:
@@ -122,9 +129,8 @@ class SolarSystem:
         # Update position
         for current_body in self.all_objects:
             current_body.kinematic.update_position()
-            current_body.kinematic.position = current_body.kinematic.position[
-                -max(499, len(current_body.kinematic.position)) :
-            ]
+            if len(current_body.kinematic.position) > 500:
+                current_body.kinematic.position.pop(0)
 
         # Calculate new velocities
         for current_body in self.all_objects:
@@ -161,50 +167,100 @@ class SolarSystem:
         )
 
     # Procedure
-    def print_header(
-        self, two_dimensions: bool, only_trojans: bool | list[int]
-    ) -> None:
-        print(
-            "\t".join(
-                ["TIME"]
-                + [
-                    "\t".join(
-                        [f"{current_body.name} X", f"{current_body.name} Y"]
-                        if two_dimensions
-                        else [
-                            f"{current_body.name} X",
-                            f"{current_body.name} Y",
-                            f"{current_body.name} Z",
-                        ]
-                    )
-                    for index, current_body in enumerate(self.all_objects)
-                    if not only_trojans or index in only_trojans
-                ]
-            )
-        )
+    def print_body_list(self, filter_list: list[int]) -> None:
+        body_list_print = ["BODYLIST"]
+        for index, current_body in enumerate(self.all_objects):
+            if filter_list and index not in filter_list:
+                continue
+            body_list_print.append(" ".join([str(index), current_body.name]))
+        print("\t".join(body_list_print))
 
     # Procedure
-    def print_system(self, only_trojans: bool | list[int]) -> None:
-        for index, time in enumerate(self.constants.time_list):
-            print(
-                "\t".join(
-                    [str(time)]
-                    + [
-                        (
-                            str(coord)
-                            if index < len(current_body.kinematic.position)
-                            else ""
-                        )
-                        for index, current_body in enumerate(self.all_objects)
-                        if not only_trojans or index in only_trojans
-                        for coord in current_body.kinematic.position[index]
-                    ]
+    def print_moon_detection(
+        self, body_types: tuple[list[int], list[int], list[int], list[tuple[int, int]]]
+    ) -> None:
+        for current_body in body_types[3]:
+            if current_body[1] != 0:
+                print(
+                    f"{self.all_objects[current_body[0]].name} orbits {current_body[1].name}"
                 )
+
+    # Function
+    def get_resonances(self, current_body: body.Body) -> list[float]:
+        resonances = []
+        for massive_body in self.massive_bodies:
+            resonance = current_body.kinematic.get_orbital_resonance(
+                massive_body.kinematic, self.massive_bodies[0].kinematic
             )
+            if isinstance(resonance, str):
+                resonances.append(resonance)
+            else:
+                resonances.append(float(resonance))
+
+        return resonances
+
+    def print_resonance(self) -> None:
+        resonance_print = ["RESONANCE"]
+        for current_body in self.all_objects:
+            if current_body.destroyed:
+                resonance_print.append("Destroyed")
+            resonances = self.get_resonances(current_body)
+            resonance_print.append(" ".join([str(res) for res in resonances]))
+        print("\t".join(resonance_print))
+
+    # Procedure
+    def print_system(
+        self, filter_list: bool | list[int], last_state: bool = False
+    ) -> None:
+        if last_state:
+            position_list = ["POSITION"]
+            for index, current_body in enumerate(self.all_objects):
+                if filter_list and index not in filter_list:
+                    continue
+                if current_body.destroyed:
+                    position_list.append("Destroyed")
+                position_list.append(
+                    " ".join(
+                        [str(coord) for coord in current_body.kinematic.position[-1]]
+                    )
+                )
+            print("\t".join(position_list))
+        else:
+            for index, time in enumerate(self.constants.time_list):
+                current_output_row = []
+                for body_index, current_body in enumerate(self.all_objects):
+                    if filter_list and body_index not in filter_list:
+                        continue
+                    if index >= len(current_body.kinematic.position):
+                        current_output_row.append("Destroyed")
+                        continue
+                    current_output_row.append(
+                        " ".join(
+                            [
+                                str(coord)
+                                for coord in current_body.kinematic.position[index]
+                            ]
+                        )
+                    )
+                if not " ".join(current_output_row).strip():
+                    break
+                print("\t".join([str(time)] + current_output_row))
+
+        velocity_list = ["VELOCITY"]
+        for body_index, current_body in enumerate(self.all_objects):
+            if filter_list and body_index not in filter_list:
+                continue
+            if current_body.kinematic.destroyed:
+                velocity_list.append("Destroyed")
+                continue
+            velocity_list.append(
+                " ".join([str(coord) for coord in current_body.kinematic.velocity])
+            )
+        print("\t".join(velocity_list))
 
     # Procedure
     def generate_system_plot(
-        self, two_dimensions: bool, only_trojans: bool | list[int] = False
+        self, two_dimensions: bool, filter_list: bool | list[int] = False
     ) -> None:
         if two_dimensions:
             matplotlib.pyplot.figure(figsize=(15, 15))
@@ -217,16 +273,13 @@ class SolarSystem:
             )
 
         for index, current_body in enumerate(self.all_objects):
-            if only_trojans:
-                if (
-                    index not in only_trojans
-                    and current_body not in self.massive_bodies
-                ):
+            if filter_list:
+                if index not in filter_list and current_body not in self.massive_bodies:
                     continue
             position_x = [position[0] for position in current_body.kinematic.position]
             position_y = [position[1] for position in current_body.kinematic.position]
-            current_color = axes._get_lines.get_next_color()
             if two_dimensions:
+                current_color = axes._get_lines.get_next_color()
                 matplotlib.pyplot.plot(
                     position_x,
                     position_y,
@@ -271,9 +324,9 @@ class SolarSystem:
             )
             if focus_object == -1:
                 trojans.append(index)
-            elif focus_object is None:
+            elif focus_object == "Degenerate":
                 degenerate.append(index)
-            elif focus_object is False:
+            elif focus_object == "Hyperbola":
                 ejected.append(index)
             else:
                 orbitting.append((index, focus_object))
