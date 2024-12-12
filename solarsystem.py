@@ -226,7 +226,9 @@ class SolarSystem:
                 )
             print("\t".join(position_list))
         else:
-            for index, time in enumerate(self.constants.time_list):
+            for index, time in enumerate(
+                self.constants.time_list[-min(499, len(self.constants.time_list) - 1) :]
+            ):
                 current_output_row = []
                 for body_index, current_body in enumerate(self.all_objects):
                     if filter_list and body_index not in filter_list:
@@ -238,7 +240,9 @@ class SolarSystem:
                         " ".join(
                             [
                                 str(coord)
-                                for coord in current_body.kinematic.position[index]
+                                for coord in current_body.kinematic.position[
+                                    -min(499, len(self.constants.time_list) - 1) + index
+                                ]
                             ]
                         )
                     )
