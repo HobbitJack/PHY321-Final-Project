@@ -318,7 +318,7 @@ class SolarSystem:
         self,
     ) -> tuple[list[int], list[int], list[int], list[tuple[int, int]]]:
         degenerate: list[int] = []
-        trojans: list[int] = []
+        interesting: list[int] = []
         ejected: list[int] = []
         orbitting: list[tuple[int, int]] = []
 
@@ -327,11 +327,11 @@ class SolarSystem:
                 [massive_body.kinematic for massive_body in self.massive_bodies]
             )
             if focus_object == -1:
-                trojans.append(index)
+                interesting.append(index)
             elif focus_object == "Degenerate":
                 degenerate.append(index)
             elif focus_object == "Hyperbola":
                 ejected.append(index)
             else:
                 orbitting.append((index, focus_object))
-        return (degenerate, trojans, ejected, orbitting)
+        return (degenerate, interesting, ejected, orbitting)
