@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from typing import Self
 
 import numpy
@@ -79,7 +80,7 @@ class KinematicObject:
 
     def get_orbit_standard_form(
         self,
-    ) -> tuple[float, float, float, float] | str:
+    ) -> tuple[tuple[float, float], float, float, float, float, float] | str:
         orbit_conic = self.get_orbit()
         if orbit_conic == "Degenerate":
             return orbit_conic
@@ -133,11 +134,14 @@ class KinematicObject:
             return orbit
 
         return numpy.sqrt(
-            numpy.sqrt(numpy.abs(orbit[0])) ** 3
+            get_ellipse_SMA(orbit) ** 3
             * 4
             * numpy.pi**2
             / (self.constants.gravitational_constant * (massive_body.mass + self.mass))
         )
+
+    def get_SMA(self) -> float:
+        return get_ellipse_SMA(self.get_orbit_standard_form())
 
     # Function
     def get_orbital_resonance(self, massive_body: Self, parent_body: Self) -> float:
@@ -146,6 +150,10 @@ class KinematicObject:
         if not isinstance(self_period, float) or not isinstance(other_period, float):
             return self_period
         return self_period / other_period
+
+    # Function
+    def plot_self_orbit(self) -> tuple[list[float], list[float]]:
+        return generate_orbit_points(self.get_orbit_standard_form())
 
 
 # Function
@@ -183,15 +191,17 @@ def get_conic_section(
             y_values,
         ]
     ).T
-    fullSolution = lstsq(A, f * numpy.ones(len(x_values)))
+    fullSolution = lstsq(A, -f * numpy.ones(len(x_values)))
     (a, b, c, d, e) = fullSolution[0]
-    return (a, b, c, d, e, f)
+    return (a / f, b / f, c / f, d / f, e / f, 1)
 
 
 # Function
 def classify_conic(a, b, c, d, e, f) -> str:
-    if numpy.isclose((a * c - b**2 / 4) * f + (b * e * d - c * d**2 - a * e**2) / 4, 0):
-        return "Degenerate"
+    # degen_check = (a * c - b**2 / 4) * 1 + (b * e * d - c * d**2 - a * e**2) / 4
+    # print(degen_check)
+    # if numpy.isclose(degen_check, 0):
+    #     return "Degenerate"
 
     if numpy.sign(a) == numpy.sign(c):
         if numpy.isclose(a, c):
@@ -204,53 +214,94 @@ def classify_conic(a, b, c, d, e, f) -> str:
 
 
 # Function
-def get_standard_form(a, b, c, d, e, f) -> tuple[float, float, float, float]:
+def get_standard_form(
+    a, b, c, d, e, f
+) -> tuple[tuple[float, float], float, float, float, float]:
     # Returns the canonical form u^2/a^2 + v^2/b^2 = 1
-    # for u = cos*x-sin*y; v = sin*y+cos*x
-    # [a^2, b^2, sin, cos]
+    # for u = cos*x-sin*y; v = sin*x+cos*y
+    # [[center_x, center_y], a^2, b^2, sin, cos]
     # Based on top answer to Mathematics Stack Exchange Q 596016, used under CC BY-SA 4.0
 
-    A = a * (a * c - b**2 / 4)
-    B = (b / 2) * (a * c - b**2 / 4)
-    C = c * (a * c - b**2 / 4)
-    F = f * (a * c - b**2 / 4) - a * e**2 / 4 - c * d**2 / 4 + b * d * e / 4
+    b = b / 2
+    d = d / 2
+    e = e / 2
+
+    center_x = (c * d - b * e) / (b**2 - a * c)
+    center_y = (a * e - b * d) / (b**2 - a * c)
+
+    A = a * (a * c - b**2)
+    B = b * (a * c - b**2)
+    C = c * (a * c - b**2)
+    F = f * (a * c - b**2) - a * e**2 - c * d**2 + 2 * b * d * e
 
     M = A**2 + C**2 + 4 * B**2 - 2 * A * C
 
-    cos_sq = ((C - A) * numpy.sqrt(M) + M) / (2 * M)
-    sin_sq = ((A - C) * numpy.sqrt(M) + M) / (2 * M)
+    cos_sq = (M - (C - A) * numpy.sqrt(M)) / (2 * M)
+    sin_sq = (M + (C - A) * numpy.sqrt(M)) / (2 * M)
     cos = numpy.sqrt(cos_sq)
     sin = numpy.sqrt(sin_sq)
 
-    return [
-        (A * cos_sq - 2 * B * cos * sin + C * sin_sq) / (-F),
-        (A * sin_sq + 2 * B * cos * sin + C * cos_sq) / (-F),
+    return (
+        (center_x, center_y),
+        (A * cos_sq - 2 * B * cos * sin + C * sin_sq) / -F,
+        (A * sin_sq + 2 * B * cos * sin + C * cos_sq) / -F,
         sin,
         cos,
-    ]
+    )
 
 
 # Function
 def get_inside_ellipse(
-    point: vector.Vector, parameters: tuple[float, float, float, float]
+    point: vector.Vector,
+    parameters: tuple[tuple[float, float], float, float, float, float],
 ) -> bool:
-    a_sq, b_sq, sin, cos = parameters
-    u = cos * point[0] - sin * point[1]
-    v = cos * point[0] + sin * point[1]
+    center, a_sq, b_sq, sin, cos = parameters
+    u = cos * (point[0] - center[0]) - sin * (point[1] - center[1])
+    v = sin * (point[0] - center[0]) + cos * (point[1] - center[1])
 
     return u**2 / a_sq + v**2 / b_sq < 1
 
 
 # Function
 def get_ellipse_foci(
-    parameters: tuple[float, float, float, float]
+    parameters: tuple[tuple[float, float], float, float, float, float]
 ) -> tuple[vector.Vector, vector.Vector]:
-    a_sq, b_sq, sin, cos = parameters
-    if numpy.isclose(a_sq, b_sq):
-        return vector.Vector(0, 0)
-    u = numpy.sqrt(a_sq - b_sq)
+    center, a_sq, b_sq, sin, cos = parameters
+    u = numpy.sqrt(center[0] ** 2 + center[1] ** 2)
 
-    return (
-        vector.Vector(u / (2 * cos), -u / (2 * sin)),
-        vector.Vector(-u / (2 * cos), u / (2 * sin)),
-    )
+    return (vector.Vector(-1, 0), vector.Vector(1, 0))
+
+
+# Function
+def get_ellipse_SMA(
+    parameters: tuple[tuple[float, float], float, float, float, float]
+) -> tuple[vector.Vector, vector.Vector]:
+    center, a_sq, b_sq, sin, cos = parameters
+
+    return numpy.sqrt(1 / min(a_sq, b_sq))
+
+
+# Function
+def generate_orbit_points(
+    ellipse_parameters: tuple[tuple[float, float], float, float, float, float]
+) -> tuple[list[float], list[float]]:
+
+    x_points = []
+    y_points = []
+
+    sin = ellipse_parameters[3]
+    cos = ellipse_parameters[4]
+
+    for t in numpy.linspace(0, 2 * numpy.pi, 500):
+        u = numpy.cos(t) / numpy.sqrt(ellipse_parameters[1])
+        v = numpy.sin(t) / numpy.sqrt(ellipse_parameters[2])
+        x_points.append(u * cos - v * sin + ellipse_parameters[0][0])
+        y_points.append(u * sin + v * cos + ellipse_parameters[0][1])
+
+    return (x_points, y_points)
+
+
+if __name__ == "__main__":
+    print(get_standard_form(1, 1, 1, -1, 2, 0))
+    print(get_ellipse_SMA(get_standard_form(1, 1, 1, -1, 2, 0)))
+    print(get_ellipse_foci(get_standard_form(1, 1, 1, -1, 2, 0)))

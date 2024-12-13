@@ -264,7 +264,10 @@ class SolarSystem:
 
     # Procedure
     def generate_system_plot(
-        self, two_dimensions: bool, filter_list: bool | list[int] = False
+        self,
+        two_dimensions: bool,
+        filter_list: bool | list[int] = False,
+        conic_to_plot: bool | int = False,
     ) -> None:
         if two_dimensions:
             matplotlib.pyplot.figure(figsize=(15, 15))
@@ -290,6 +293,15 @@ class SolarSystem:
                     label=f"{current_body.name}",
                     color=current_color,
                 )
+                if (index + 1) == conic_to_plot:
+                    orbit = current_body.kinematic.plot_self_orbit()
+                    print(current_body.name)
+                    print(
+                        current_body.kinematic.get_orbital_period(
+                            self.massive_bodies[0]
+                        )
+                    )
+                    matplotlib.pyplot.plot(*orbit, color=current_color, linestyle="--")
                 if current_body in self.massive_bodies:
                     matplotlib.pyplot.plot(
                         position_x[-1], position_y[-1], "o", color=current_color

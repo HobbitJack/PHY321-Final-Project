@@ -16,6 +16,7 @@ PRINT_RESONANCES = False
 PRINT_SYSTEM = False
 PRINT_LASTSTATE = False
 PLOT_SYSTEM = False
+PLOT_CONIC = False
 DISPLAY_LEGEND = True
 FILENAME = False
 NUM_BODIES = False
@@ -27,10 +28,11 @@ USE_INPUT_DATA = False
 if __name__ == "__main__":
     constant = constants.Constants()
 
-    short_options = "2B:d:f:FG:IlLpPrRqsS:t:hv"
+    short_options = "2B:C:d:f:FG:IlLpPrRqsS:t:hv"
     long_options = [
         "2-dimensions",
         "small-bodies=",
+        "conic-section=",
         "delta-time=",
         "output-file=",
         "filter-interesting",
@@ -91,6 +93,9 @@ if __name__ == "__main__":
             print("Output options:")
             print("  -b, --body-list                  Output list of bodies")
             print(
+                "  -C, --conic-section=NUM          Plot the conic for body number NUM"
+            )
+            print(
                 "  -f, --output-file=FILE           Output plot to FILE instead of displaying"
             )
             print(
@@ -124,6 +129,12 @@ if __name__ == "__main__":
                 NUM_BODIES = int(argument)
             except ValueError:
                 print(f"solarsystem: {argument}: Invalid body selection")
+                sys.exit(1)
+        elif option == "-C" or option == "--conic-section":
+            try:
+                PLOT_CONIC = int(argument)
+            except ValueError:
+                print(f"solarsystem: {argument}: Invalid body number")
                 sys.exit(1)
         elif option == "-d" or option == "--delta-time":
             try:
@@ -210,7 +221,7 @@ if __name__ == "__main__":
         system.print_system(FILTER_OBJECTS, PRINT_LASTSTATE)
 
     if PLOT_SYSTEM:
-        system.generate_system_plot(TWO_DIMENSIONS, FILTER_OBJECTS)
+        system.generate_system_plot(TWO_DIMENSIONS, FILTER_OBJECTS, PLOT_CONIC)
 
         if DISPLAY_LEGEND:
             matplotlib.pyplot.legend()
